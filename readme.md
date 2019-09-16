@@ -1,6 +1,8 @@
   Weather-Display With DarkSky.net Forecast Driver
   Copyright 2019 @Matthew (Scottma61)
  
+ Hubitat Community Forum discussion is here:  https://community.hubitat.com/t/release-weather-display-with-darksky-net-forecast-driver/22613
+ 
    Many people contributed to the creation of this driver.  Significant contributors include:
    - @Cobra who adapted it from @mattw01's work and I thank them for that!
    - @bangali for his original APIXU.COM base code that much of the early versions of this driver was 
