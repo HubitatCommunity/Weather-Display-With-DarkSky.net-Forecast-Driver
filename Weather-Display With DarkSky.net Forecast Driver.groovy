@@ -1053,7 +1053,8 @@ void PostPoll() {
         SummaryMessage(summaryType, Summary_last_poll_date, Summary_last_poll_time, Summary_forecastTemp, Summary_precip, Summary_vis)
     }
 //  >>>>>>>>>> End Built Weather Summary text <<<<<<<<<<    
-
+    String dsIcon = '<a href=\"https://darksky.net/poweredby/\"><img src=' + getDataValue("iconLocation") + (dsIconbackgrounddark ? 'dsD.png' : 'dsL.png') + ' style=\"height:2em;display:inline;\"></a>'
+    String dsText = '<a href=\"https://darksky.net/poweredby/\">Powered by Dark Sky</a>'        
 //  <<<<<<<<<< Begin Built 3dayfcstTile >>>>>>>>>>
     if(threedayTilePublish) {
         String my3day = '<style type=\"text/css\">'
@@ -1098,6 +1099,15 @@ void PostPoll() {
         my3day += '<td>' + getDataValue('PoP2') + '%</td>'
         my3day += '</tr>'
         my3day += '</table>'
+        if((my3day.length() + dsIcon.length() + 10) < 1025) {
+            my3day+= '<br>' + dsIcon + '</span>'
+        }else{
+            if((my3day.length() + dsText.length() + 10) < 1025) {
+                my3day+= '<br>' + dsText + '</span>'
+            }else{
+                mytmy3dayext+= '<br>Powered by Dark Sky</span>'
+            }
+        }
         sendEvent(name: "threedayfcstTile", value: my3day.take(1024))
     }
 //  >>>>>>>>>> End Built 3dayfcstTile <<<<<<<<<<
@@ -1111,8 +1121,6 @@ void PostPoll() {
         boolean raintoday = (getDataValue("precip_today").toBigDecimal() > 0.0)        
         String alertStyleOpen = (noAlert ? '' :  '<span style=\"font-style:italic;\">')
         String alertStyleClose = (noAlert ? '<br>' : '</span><br>')
-        String dsIcon = '<a href=\"https://darksky.net/poweredby/\"><img src=' + getDataValue("iconLocation") + (dsIconbackgrounddark ? 'dsD.png' : 'dsL.png') + ' style=\"height:2em;display:inline;\"></a>'
-        String dsText = '<a href=\"https://darksky.net/poweredby/\">Powered by Dark Sky</a>'        
         BigDecimal wgust
         if(getDataValue("wind_gust").toBigDecimal() < 1.0 ) {
             wgust = 0.0g
@@ -1126,11 +1134,11 @@ void PostPoll() {
         mytext+= '<span style=\"font-size:.8em;\"><img src=' + getDataValue("iconLocation") + getDataValue("wind_bft_icon") + iconCloseStyled + getDataValue("wind_direction") + " "
         mytext+= getDataValue("wind").toBigDecimal() < 1.0 ? 'calm' : "@ " + getDataValue("wind") + " " + dMetric
         mytext+= ', gusts ' + ((wgust < 1.0) ? 'calm' :  "@ " + wgust.toString() + " " + dMetric) + '<br>'
-        mytext+= '<img src=' + getDataValue("iconLocation") + 'wb.png' + iconCloseStyled + String.format("%,4.1f", getDataValue("pressure").toBigDecimal()) + " " + pMetric + '   <img src=' + getDataValue("iconLocation") + 'wh.png' + iconCloseStyled
-        mytext+= getDataValue("humidity") + '%   ' + '<img src=' + getDataValue("iconLocation") + 'wu.png' + iconCloseStyled + getDataValue("percentPrecip") + '%'
-        mytext+= (raintoday ? '   <img src=' + getDataValue("iconLocation") + 'wr.png' + iconCloseStyled + getDataValue("precip_today") + rMetric : '') + '<br>'
-        mytext+= '<img src=' + getDataValue("iconLocation") + 'wsr.png' + iconCloseStyled + getDataValue("localSunrise") + '     <img src=' + getDataValue("iconLocation") + 'wss.png' + iconCloseStyled
-        mytext+= getDataValue("localSunset") + '     Updated: ' + Summary_last_poll_time
+        mytext+= '<img src=' + getDataValue("iconLocation") + 'wb.png' + iconCloseStyled + String.format("%,4.1f", getDataValue("pressure").toBigDecimal()) + " " + pMetric + '   <img src=' + getDataValue("iconLocation") + 'wh.png' + iconCloseStyled
+        mytext+= getDataValue("humidity") + '%   ' + '<img src=' + getDataValue("iconLocation") + 'wu.png' + iconCloseStyled + getDataValue("percentPrecip") + '%'
+        mytext+= (raintoday ? '   <img src=' + getDataValue("iconLocation") + 'wr.png' + iconCloseStyled + getDataValue("precip_today") + rMetric : '') + '<br>'
+        mytext+= '<img src=' + getDataValue("iconLocation") + 'wsr.png' + iconCloseStyled + getDataValue("localSunrise") + '     <img src=' + getDataValue("iconLocation") + 'wss.png' + iconCloseStyled
+        mytext+= getDataValue("localSunset") + '     Updated: ' + Summary_last_poll_time
         if((mytext.length() + dsIcon.length() + 10) < 1025) {
             mytext+= '<br>' + dsIcon + '</span>'
         }else{
@@ -1200,7 +1208,7 @@ void PostPoll() {
                 mytext+= (raintoday ? (removeicons < 3 ? ('<img src=' + getDataValue("iconLocation") + 'wr.png' + iconCloseStyled) : (' | Precip: ')) + getDataValue("precip_today") + rMetric : '') + '<br>'
                 mytext+= (removeicons < 2 ? ('<img src=' + getDataValue("iconLocation") + 'wsr.png' + iconCloseStyled) : ('Sunrise: ')) + getDataValue("localSunrise") + '  '
                 mytext+= (removeicons < 1 ? ('<img src=' + getDataValue("iconLocation") + 'wss.png' + iconCloseStyled) : (' | Sunset: ')) + getDataValue("localSunset")
-                mytext+= '     Updated ' + Summary_last_poll_time + '</span>'
+                mytext+= '     Updated ' + Summary_last_poll_time + '</span>'
             }else{
                 LOGINFO("myTile still exceeds 1,024 characters (" + mytext.length() + ") ... removing all formatting.")
                 mytext = getDataValue("city") + '<br>'
