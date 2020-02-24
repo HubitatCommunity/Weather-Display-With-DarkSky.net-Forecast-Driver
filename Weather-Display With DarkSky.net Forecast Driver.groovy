@@ -1285,6 +1285,7 @@ void initialize() {
     String tempFormat = (settings?.tempFormat ?: "Fahrenheit (°F)")
     String TWDDecimals = (settings?.TWDDecimals ?: "0")
     String PDecimals = (settings?.PDecimals ?: "0")
+    String RDecimals = (settings?.RDecimals ?: "0")
     boolean luxjitter = (settings?.luxjitter ?: false)    
 	boolean iconType = (settings?.iconType ?: false)
     updateDataValue("iconType", iconType ? 'true' : 'false')
