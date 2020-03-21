@@ -55,8 +55,13 @@ The driver exposes both metric and imperial measurements for you to select from.
    on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
    for the specific language governing permissions and limitations under the License.
  
-   Last Update 03/01/2020
+   Last Update 03/20/2020
   { Left room below to document version changes...}
+
+
+
+
+   V4.4.7   Allow location override. Corrected forecastHigh/Low to 'number' from 'string'     - 03/20/2020
    V4.4.6   Changed links for they Open in new tabs/windows.                                  - 03/01/2020
    V4.4.5   Enhancements to myTile and threedayfcstTile, NEW alertTile                        - 02/28/2020
    V4.4.4   Changed forecasts to use temperatureMax/Min instead of temperatureHigh/Low        - 02/27/2020
@@ -141,7 +146,7 @@ The way the 'optional' attributes work:
    available in the dashboard is to delete the virtual device and create a new one AND DO NOT SELECT the
    attribute you do not want to show.
  */
-public static String version()      {  return "4.4.6"  }
+public static String version()      {  return "4.4.7"  }
 import groovy.transform.Field
 
 metadata {
@@ -188,8 +193,8 @@ metadata {
         attribute "dsIconlighttext", "string"
         
 //fcstHighLow
-		attribute "forecastHigh", "string"
-		attribute "forecastLow", "string"
+		attribute "forecastHigh", "number"
+		attribute "forecastLow", "number"
 
 // controlled with localSunrise
 		attribute "tw_begin", "string"
@@ -241,6 +246,11 @@ metadata {
 		    input "sourceIllumination", "bool", required: true, title: "Illuminance from Weather-Display?", defaultValue: true
             input "sourceUV", "bool", required: true, title: "UV from Weather-Display?", defaultValue: true
             input "sourceWind", "bool", required: true, title: "Wind from Weather-Display?", defaultValue: true
+            input "altCoord", "bool", required: true, defaultValue: false, title: "Override Hub's location coordinates"            
+            if (altCoord) {
+                input "altLat", "string", title: "Override location Latitude", required: true, defaultValue: location.latitude.toString(), description: "<br>Enter location Latitude<br>"
+                input "altLon", "string", title: "Override location Longitude", required: true, defaultValue: location.longitude.toString(), description: "<br>Enter location Longitude<br>"
+            }
             input "settingEnable", "bool", title: "<b>Display All Optional Attributes</b>", description: "$settingDescr", defaultValue: true
 	// build a Selector for each mapped Attribute or group of attributes
 	    	attributesMap.each
@@ -253,7 +263,7 @@ metadata {
             }
             if (settingEnable) {
                 input "windPublish", "bool", title: "Wind Speed", required: true, defaultValue: "false", description: "<br>Display 'wind' speed<br>"
-            }            
+            }
         }
     }
 }
@@ -262,8 +272,8 @@ metadata {
 void pollSunRiseSet() {
     currDate = new Date().format("yyyy-MM-dd", TimeZone.getDefault())
     LOGINFO("Weather-Display Driver - INFO: Polling Sunrise-Sunset.org")
-    def requestParams = [ uri: "https://api.sunrise-sunset.org/json?lat=" + location.latitude + "&lng=" + location.longitude + "&formatted=0" ]
-    if (currDate) {requestParams = [ uri: "https://api.sunrise-sunset.org/json?lat=" + location.latitude + "&lng=" + location.longitude + "&formatted=0&date=$currDate" ]}
+    def requestParams = [ uri: "https://api.sunrise-sunset.org/json?lat=" + altLat + "&lng=" + altLon + "&formatted=0" ]
+    if (currDate) {requestParams = [ uri: "https://api.sunrise-sunset.org/json?lat=" + altLat + "&lng=" + altLon + "&formatted=0&date=$currDate" ]}
     LOGINFO("Poll Sunrise-Sunset: $requestParams")
     asynchttpGet("sunRiseSetHandler", requestParams)
     return
@@ -556,8 +566,8 @@ void pollDS() {
     if( apiKey == null ) {
         log.warn "Weather-Display Driver - WARNING: DarkSky API Key not found.  Please configure in preferences."
         return
-    }    
-	def ParamsDS = [ uri: "https://api.darksky.net/forecast/${apiKey}/" + location.latitude + ',' + location.longitude + "?units=us&exclude=minutely,hourly,flags" ]
+    }
+    def ParamsDS = [ uri: "https://api.darksky.net/forecast/" + apiKey + "/" + altLat + "," + altLon + "?units=us&exclude=minutely,hourly,flags" ]
     LOGINFO("Poll DarkSky: $ParamsDS")
 	asynchttpGet("pollDSHandler", ParamsDS)
     return
@@ -613,7 +623,7 @@ void doPollDS(Map ds) {
 
     if (!ds.alerts){
         updateDataValue("alert", 'No current weather alerts for this area')
-        updateDataValue("alertTileLink", '<a href="https://darksky.net/forecast/' + String.format("%3.4f",location.latitude) + "," + String.format("%3.4f",location.longitude) + '" target=\'_blank\'>No current weather alerts for this area.</a>')
+        updateDataValue("alertTileLink", '<a href="https://darksky.net/forecast/' + altLat + ',' + altLon + '" target=\"_blank\">No current weather alerts for this area.</a>')
         updateDataValue("alertLink", '<a>' + getDataValue("condition_text") + '</a>')        
         updateDataValue("alertLink2", '<a>' + getDataValue("condition_text") + '</a>')
         updateDataValue("alertLink3", '<a>' + getDataValue("condition_text") + '</a>')
@@ -621,14 +631,15 @@ void doPollDS(Map ds) {
     } else {  
         updateDataValue("alertTileLink", '<a style="font-style:italic;color:red;" href="'+ds.alerts[0].uri+ '" target=\'_blank\'>'+ds.alerts.title.toString().replaceAll("[{}\\[\\]]", "").split(/,/)[0]+'</a>')
         updateDataValue("alertLink", '<a style="font-style:italic;color:red;" href="'+ds.alerts[0].uri+ '" target=\'_blank\'>'+ds.alerts.title.toString().replaceAll("[{}\\[\\]]", "").split(/,/)[0]+'</a>')        
-        updateDataValue("alertLink2", '<a style="font-style:italic;color:red;" href="https://darksky.net/forecast/' + String.format("%3.4f",location.latitude) + "," + String.format("%3.4f",location.longitude)  + '" target=\'_blank\'>'+ds.alerts.title.toString().replaceAll("[{}\\[\\]]", "").split(/,/)[0]+'</a>')
+        def String al2 = '<a style="font-style:italic;color:red;" href="https://darksky.net/forecast/' + altLat + ',' + altLon + '" target="_blank">'
+        updateDataValue("alertLink2", al2+ds.alerts.title.toString().replaceAll("[{}\\[\\]]", "").split(/,/)[0]+'</a>')
         updateDataValue("alertLink3", '<a style="font-style:italic;color:red;" target=\'_blank\'>'+ds.alerts.title.toString().replaceAll("[{}\\[\\]]", "").split(/,/)[0]+'</a>')
         updateDataValue("alert", ds.alerts.title.toString().replaceAll("[{}\\[\\]]", "").split(/,/)[0])
         updateDataValue("possAlert", "true")
 /* code to test weather alerts
         updateDataValue("alertTileLink", '<a style="font-style:italic;color:red;" href="'+"https://alerts.weather.gov/cap/wwacapget.php?x=NJ125F3B5DE240.WindAdvisory.125F3B5E5130NJ.PHINPWPHI.4c81e473f52888dec2cb0723d0145f0b"+'">'+"Wind Advisory"+'</a>')
         updateDataValue("alertLink", '<a style="font-style:italic;color:red;" href="'+"https://alerts.weather.gov/cap/wwacapget.php?x=NJ125F3B5DE240.WindAdvisory.125F3B5E5130NJ.PHINPWPHI.4c81e473f52888dec2cb0723d0145f0b"+'">'+"Wind Advisory"+'</a>')
-        updateDataValue("alertLink2", '<a style="font-style:italic;color:red;" href="https://darksky.net/forecast/' + String.format("%3.4f",location.latitude) + "," + String.format("%3.4f",location.longitude) + '12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890">'+'Wind Advisory'+'</a>')
+        updateDataValue("alertLink2", '<a style="font-style:italic;color:red;" href="https://darksky.net/forecast/' + altLat + ',' + altLon + '" target=\"_blank\">' + '12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890">'+'Wind Advisory'+'</a>')
         updateDataValue("alertLink3", '<a style="font-style:italic;color:red;">'+'Wind Advisory'+'</a>')
         updateDataValue("alert", "Wind Advisory")
         updateDataValue("possAlert", "true")
@@ -1096,7 +1107,7 @@ void PostPoll() {
     }
 //  >>>>>>>>>> End Built Weather Summary text <<<<<<<<<<    
     String dsIcon = '<a href="https://darksky.net/poweredby/" target="_blank"><img src=' + getDataValue("iconLocation") + (dsIconbackgrounddark ? 'dsD.png' : 'dsL.png') + ' style="height:2em;"></a>' // style=\"height:2em;external;display:inline;\"
-    String dsText = '<a href="https://darksky.net/poweredby/" target="_blank">Powered by Dark Sky</a>'        
+    String dsText = '<a href="https://darksky.net/poweredby/" target="_blank">Powered by Dark Sky</a>'      
 //  <<<<<<<<<< Begin Built 3dayfcstTile >>>>>>>>>>
     if(threedayTilePublish) {
         String my3day = '<style type=\"text/css\">'
@@ -1106,7 +1117,7 @@ void PostPoll() {
         my3day += '<table align="center" style="width:100%">'
         my3day += '<tr>'
         my3day += '<td></td>'
-        my3day += '<td><a href="https://darksky.net/forecast/' + String.format("%3.4f",location.latitude) + "," + String.format("%3.4f",location.longitude)  + '" target="_blank">Today</a></td>'
+        my3day += '<td><a href="https://darksky.net/forecast/' + altLat + ',' + altLon + '" target="_blank">Today</a></td>'
 	    my3day += '<td>' + getDataValue('day1') + '</td>'
 	    my3day += '<td>' + getDataValue('day2') + '</td>'
         my3day += '</tr>'
@@ -1144,9 +1155,9 @@ void PostPoll() {
         if(my3day.length() + 11 > 1024) {
             my3day = "Too much data to display.</br></br>Exceeds maximum tile length by " + 1024 - my3day.length() - 11 + " characters."
         }else if((my3day.length() + dsIcon.length() + 11) < 1025) {
-            my3day += dsIcon + ' @ ' + Summary_last_poll_time
+            my3day += dsIcon + ' @ ' + Summary_last_poll_time
         }else if((my3day.length() + dsText.length() + 11) < 1025) {
-            my3day += dsText + ' @ ' + Summary_last_poll_time
+            my3day += dsText + ' @ ' + Summary_last_poll_time
         }else{
             my3day += 'Powered by Dark Sky'
         }
@@ -1158,7 +1169,7 @@ void PostPoll() {
     if(alertPublish){ // don't bother setting these values if it's not enabled
         String alertTime = new Date().parse("EEE MMM dd HH:mm:ss z yyyy", getDataValue("futime")).format(timeFormat, TimeZone.getDefault())
         String alertDate = new Date().parse("EEE MMM dd HH:mm:ss z yyyy", getDataValue("futime")).format(dateFormat, TimeZone.getDefault())
-        String alertTile = "Weather Alerts for " + '<a href="https://darksky.net/forecast/' + String.format("%3.4f",location.latitude) + "," + String.format("%3.4f",location.longitude) + '" target=\'_blank\'>' + getDataValue("city") + ', ' + getDataValue("state") + "</a><br>updated at ${alertTime} on ${alertDate}.<br>"
+        String alertTile = "Weather Alerts for " + '<a href="https://darksky.net/forecast/' + altLat + ',' + altLon + '" target="_blank">' + getDataValue("city") + ', ' + getDataValue("state") + "</a><br>updated at ${alertTime} on ${alertDate}.<br>"
         alertTile+= getDataValue("alertTileLink") + '<br>'
         alertTile+= dsIcon //'<a href=\"https://darksky.net/poweredby/\" target=\'_blank\'><img src=' + getDataValue("iconLocation") + (dsIconbackgrounddark ? 'dsD.png' : 'dsL.png') + ' style=\"height:1.5em;display:inline;\"></a>'       
         updateDataValue("alertTile", alertTile)
@@ -1182,7 +1193,7 @@ void PostPoll() {
         } else {
             wgust = getDataValue("wind_gust").toBigDecimal()
         }
-        String mytextb = '<span style=\"display:inline;\"><a href="https://darksky.net/forecast/' + String.format("%3.4f",location.latitude) + "," + String.format("%3.4f",location.longitude) + '" target=\'_blank\'>' + getDataValue("city") + ", " + getDataValue("state")  + '</a><br>'        
+        String mytextb = '<span style="display:inline;"><a href="https://darksky.net/forecast/' + altLat + ',' + altLon + '" target="_blank">' + getDataValue("city") + ", " + getDataValue("state")  + '</a><br>'        
         String mytextm1 = getDataValue("condition_text") + (noAlert ? '' : ' | ') + alertStyleOpen + (noAlert ? '' : getDataValue("alertLink")) + alertStyleClose
         String mytextm2 = getDataValue("condition_text") + (noAlert ? '' : ' | ') + alertStyleOpen + (noAlert ? '' : getDataValue("alertLink2")) + alertStyleClose
         String mytextm3 = getDataValue("condition_text") + (noAlert ? '' : ' | ') + alertStyleOpen + (noAlert ? '' : getDataValue("alertLink3")) + alertStyleClose        
@@ -1191,11 +1202,11 @@ void PostPoll() {
         mytexte+= '<span style=\"font-size:.9em;\"><img src=' + getDataValue("iconLocation") + getDataValue("wind_bft_icon") + iconCloseStyled + getDataValue("wind_direction") + " "
         mytexte+= getDataValue("wind").toBigDecimal() < 1.0 ? 'calm' : "@ " + String.format(ddisp_twd, getDataValue("wind").toBigDecimal()) + " " + dMetric
         mytexte+= ', gusts ' + ((wgust < 1.0) ? 'calm' :  "@ " + String.format(ddisp_twd, wgust) + " " + dMetric) + '<br>'
-        mytexte+= '<img src=' + getDataValue("iconLocation") + 'wb.png' + iconCloseStyled + String.format(ddisp_p, getDataValue("pressure").toBigDecimal()) + " " + pMetric + '   <img src=' + getDataValue("iconLocation") + 'wh.png' + iconCloseStyled
-        mytexte+= getDataValue("humidity") + '%   ' + '<img src=' + getDataValue("iconLocation") + 'wu.png' + iconCloseStyled + getDataValue("percentPrecip") + '%'
-        mytexte+= (raintoday ? '   <img src=' + getDataValue("iconLocation") + 'wr.png' + iconCloseStyled + String.format(ddisp_r, getDataValue("precip_today").toBigDecimal()) + " " + rMetric : '') + '<br>'
-        mytexte+= '<img src=' + getDataValue("iconLocation") + 'wsr.png' + iconCloseStyled + getDataValue("localSunrise") + '     <img src=' + getDataValue("iconLocation") + 'wss.png' + iconCloseStyled
-        mytexte+= getDataValue("localSunset") + '     Updated: ' + Summary_last_poll_time
+        mytexte+= '<img src=' + getDataValue("iconLocation") + 'wb.png' + iconCloseStyled + String.format(ddisp_p, getDataValue("pressure").toBigDecimal()) + " " + pMetric + '   <img src=' + getDataValue("iconLocation") + 'wh.png' + iconCloseStyled
+        mytexte+= getDataValue("humidity") + '%   ' + '<img src=' + getDataValue("iconLocation") + 'wu.png' + iconCloseStyled + getDataValue("percentPrecip") + '%'
+        mytexte+= (raintoday ? '   <img src=' + getDataValue("iconLocation") + 'wr.png' + iconCloseStyled + String.format(ddisp_r, getDataValue("precip_today").toBigDecimal()) + " " + rMetric : '') + '<br>'
+        mytexte+= '<img src=' + getDataValue("iconLocation") + 'wsr.png' + iconCloseStyled + getDataValue("localSunrise") + '     <img src=' + getDataValue("iconLocation") + 'wss.png' + iconCloseStyled
+        mytexte+= getDataValue("localSunset") + '     Updated: ' + Summary_last_poll_time
         String mytext = mytextb + mytextm1 + mytexte
         if((mytext.length() + dsIcon.length() + 10) < 1025) {
             mytext+= '<br>' + dsIcon + '</span>'
@@ -1273,7 +1284,7 @@ void PostPoll() {
                 mytext+= (raintoday ? (removeicons < 3 ? ('<img src=' + getDataValue("iconLocation") + 'wr.png' + iconCloseStyled) : (' | Precip: ')) + String.format(ddisp_twd, getDataValue("precip_today").toBigDecimal()) + " " + rMetric : '') + '<br>'
                 mytext+= (removeicons < 2 ? ('<img src=' + getDataValue("iconLocation") + 'wsr.png' + iconCloseStyled) : ('Sunrise: ')) + getDataValue("localSunrise") + '  '
                 mytext+= (removeicons < 1 ? ('<img src=' + getDataValue("iconLocation") + 'wss.png' + iconCloseStyled) : (' | Sunset: ')) + getDataValue("localSunset")
-                mytext+= '     Updated ' + Summary_last_poll_time + '</span>'
+                mytext+= '     Updated ' + Summary_last_poll_time + '</span>'
             }else{
                 LOGINFO("myTile still exceeds 1,024 characters (" + mytext.length() + ") ... removing all formatting.")
                 mytext = getDataValue("city") + '<br>'
@@ -1324,6 +1335,22 @@ void initialize() {
     unschedule(pollWD)
     unschedule(pollDS)
     boolean logSet = (settings?.logSet ?: false)
+    boolean altCoord = (settings?.altCoord ?: false)
+    if (altCoord) {
+        if (altLat == null) {
+            device.updateSetting("altLat", [value:location.latitude.toString(),type:"text"])
+        }
+        if (altLon == null) {
+            device.updateSetting("altLon", [value:location.longitude.toString(),type:"text"])        
+        }
+    } else {
+        device.removeSetting("altLat")
+        device.removeSetting("altLon")
+        device.updateSetting("altLat", [value:location.latitude.toString(),type:"text"])
+        device.updateSetting("altLon", [value:location.longitude.toString(),type:"text"])                
+    }
+    String altLat = settings?.altLat ?: location.latitude.toString()
+    String altLon = settings?.altLon ?: location.longitude.toString()
 	int extSource = (settings?.extSource.toInteger() ?: 2).toInteger()
     String pollIntervalStation = (settings?.pollIntervalStation ?: "3 Hours")
     String pollLocationStation = (settings?.pollLocationStation ?: "http://")
