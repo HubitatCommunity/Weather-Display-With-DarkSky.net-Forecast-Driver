@@ -1,4 +1,5 @@
-[DEPRECATED - NO LONGER SUPPORTED - Use the OpenWeatherMap version of this driver]
+[DEPRECATED - NO LONGER SUPPORTED - Use the OpenWeatherMap version of this driver.  
+https://github.com/HubitatCommunity/Weather-Display-With-OWM-NWS-Alerts-Forecast-Driver]
 
 Weather-Display With DarkSky.net Forecast Driver Copyright 2019 @Matthew (Scottma61)
 
