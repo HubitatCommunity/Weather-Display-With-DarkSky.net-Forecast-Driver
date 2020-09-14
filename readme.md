@@ -1,3 +1,5 @@
+[DEPRECATED - NO LONGER SUPPORTED - Use the OpenWeatherMap version of this driver]
+
 Weather-Display With DarkSky.net Forecast Driver Copyright 2019 @Matthew (Scottma61)
 
 <a href="https://community.hubitat.com/t/release-weather-display-with-darksky-net-forecast-driver/22613">Hubitat Community Forum discussion</a>
